@@ -12,6 +12,7 @@ function App() {
   const [searchResults, setSearchResults] = useState([])
   const [myWaifus, setMyWaifus] = useState([])
   const [loading, setLoading] = useState(false)
+  const [isWakingUp, setIsWakingUp] = useState(true)
 
   // --- USER ID LOGIC ---
   const [userId, setUserId] = useState(localStorage.getItem("waifu_user_id") || "")
