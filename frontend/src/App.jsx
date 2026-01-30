@@ -86,13 +86,17 @@ function App() {
   const fetchDashboard = () => {
     if (!userId) return; // Wait until we have an ID
     axios.get('/dashboard', {
-        headers: { 'x-user-id': userId }  // THE KEY CARD
+        headers: { 'x-user-id': userId }
       })
       .then(res => {
         setMyWaifus(res.data);
         checkBirthdaysAndNotify(res.data);
+        setIsWakingUp(false); // STOP LOADING
       })
-      .catch(err => console.error(err))
+      .catch(err => {
+        console.error(err);
+        setIsWakingUp(false); // STOP LOADING EVEN IF ERROR
+      })
   }
 
   const handleSearch = (searchTerm) => {
@@ -285,27 +289,48 @@ function App() {
         <h2 id="dashboard-section" className="text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-pink-400 font-mono">
         ❤︎ WAIFU COLLECTION ❤︎
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
-          {(myWaifus || []).map((waifu) => (
-            <div key={waifu.id} className="bg-gray-800 p-4 rounded-lg flex items-center shadow-md border-l-4 border-pink-600 relative group hover:bg-gray-750 transition-colors">
-               <img src={waifu.image} alt={waifu.name} className="w-16 h-16 rounded-sm object-cover mr-4 opacity-80 group-hover:opacity-100 transition-opacity border-2 border-pink-500" />
-               <div className="flex-1">
-                 <h3 className="font-bold text-lg font-mono tracking-tighter">{waifu.name.toUpperCase()}</h3>
-                 <div className="flex justify-between items-center mt-1">
-                   <span className={`text-xs font-mono px-2 py-1 rounded ${waifu.days_until === 0 ? 'bg-pink-500 text-white font-bold animate-pulse' : 'bg-gray-900 text-gray-400 border border-gray-600'}`}>
-                     {waifu.status}
-                   </span>
-                 </div>
-               </div>
-               <button 
-                 onClick={() => deleteWaifu(waifu.id)}
-                 className="absolute top-2 right-2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2"
-               >
-                 <FaTrash />
-               </button>
+
+        {/* --- NEW LOADING LOGIC STARTS HERE --- */}
+        {isWakingUp ? (
+          <div className="flex flex-col items-center justify-center h-64 space-y-6 bg-gray-800/50 rounded-lg border border-gray-700">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute top-0 left-0 w-16 h-16 border-4 border-pink-200 border-b-transparent rounded-full animate-spin opacity-30" style={{ animationDirection: 'reverse', animationDuration: '2s' }}></div>
             </div>
-          ))}
-        </div>
+            <p className="text-pink-400 font-mono animate-pulse text-lg text-center">
+              Waking up the server...<br/>
+              <span className="text-sm text-gray-500">(This may take up to 30s)</span>
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
+            {myWaifus.length === 0 ? (
+               <div className="col-span-full text-center py-10 text-gray-500 font-mono border border-dashed border-gray-700 rounded-lg">
+                 NO DATA FOUND. SEARCH ABOVE TO ADD ONE!
+               </div>
+            ) : (
+              myWaifus.map((waifu) => (
+                <div key={waifu.id} className="bg-gray-800 p-4 rounded-lg flex items-center shadow-md border-l-4 border-pink-600 relative group hover:bg-gray-750 transition-colors">
+                  <img src={waifu.image} alt={waifu.name} className="w-16 h-16 rounded-sm object-cover mr-4 opacity-80 group-hover:opacity-100 transition-opacity border-2 border-pink-500" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg font-mono tracking-tighter">{waifu.name.toUpperCase()}</h3>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className={`text-xs font-mono px-2 py-1 rounded ${waifu.days_until === 0 ? 'bg-pink-500 text-white font-bold animate-pulse' : 'bg-gray-900 text-gray-400 border border-gray-600'}`}>
+                        {waifu.status}
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => deleteWaifu(waifu.id)}
+                    className="absolute top-2 right-2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
