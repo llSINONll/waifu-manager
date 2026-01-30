@@ -3,6 +3,9 @@ import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FaSearch, FaPlus, FaTrash, FaBars, FaTimes, FaHeart, FaCog } from 'react-icons/fa'
 
+// Use the cloud URL if available, otherwise use localhost
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 function App() {
   // --- STATE VARIABLES ---
   const [query, setQuery] = useState("")
@@ -82,7 +85,7 @@ function App() {
 
   const fetchDashboard = () => {
     if (!userId) return; // Wait until we have an ID
-    axios.get('http://192.168.31.240:8000/dashboard', {
+    axios.get('/dashboard', {
         headers: { 'x-user-id': userId }  // THE KEY CARD
       })
       .then(res => {
@@ -94,7 +97,7 @@ function App() {
 
   const handleSearch = (searchTerm) => {
     setLoading(true);
-    axios.get(`http://192.168.31.240:8000/search/${searchTerm}`)
+    axios.get(`/search/${searchTerm}`)
       .then(res => { setSearchResults(res.data); setLoading(false); })
       .catch(err => { console.log("No results"); setLoading(false); })
   }
@@ -107,7 +110,7 @@ function App() {
 
   const confirmAdd = () => {
     if (!selectedChar) return;
-    axios.post('http://192.168.31.240:8000/add', {
+    axios.post('/add', {
       name: selectedChar.name,
       image: selectedChar.image,
       about: selectedChar.about,
@@ -127,7 +130,7 @@ function App() {
   }
 
   const deleteWaifu = (id) => {
-    axios.delete(`http://192.168.31.240:8000/delete/${id}`, {
+    axios.delete(`/delete/${id}`, {
         headers: { 'x-user-id': userId } // THE KEY CARD
       })
       .then(res => { fetchDashboard(); })
