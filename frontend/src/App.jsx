@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaSearch, FaPlus, FaTrash, FaBars, FaTimes, FaHeart, FaCog } from 'react-icons/fa'
+import { FaSearch, FaPlus, FaTrash, FaBars, FaTimes, FaHeart, FaCog , FaBell} from 'react-icons/fa'
 
 // Use the cloud URL if available, otherwise use localhost
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -13,6 +13,7 @@ function App() {
   const [myWaifus, setMyWaifus] = useState([])
   const [loading, setLoading] = useState(false)
   const [isWakingUp, setIsWakingUp] = useState(true)
+  const [menuView, setMenuView] = useState("main")
 
   // --- USER ID LOGIC ---
   const [userId, setUserId] = useState(localStorage.getItem("waifu_user_id") || "")
@@ -80,6 +81,22 @@ function App() {
         sendNotification(`🎉 It's ${waifu.name}'s Birthday!`, `Don't forget to celebrate today!`);
       } else if (waifu.days_until === 1) {
         sendNotification(`⏰ Heads up!`, `${waifu.name}'s birthday is tomorrow!`);
+      }
+    });
+  }
+
+    // --- NEW FUNCTION ---
+  const requestNotificationAccess = () => {
+    if (!("Notification" in window)) {
+      alert("This browser does not support desktop notifications");
+      return;
+    }
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        sendNotification("System Online", "Notifications are now active!");
+        setIsMenuOpen(false); // Close menu on success
+      } else {
+        alert("Permission denied. Check phone settings.");
       }
     });
   }
@@ -182,16 +199,36 @@ function App() {
                 </button>
               </div>
 
+              {/* --- MENU CONTENT SWITCHER --- */}
               <div className="flex flex-col gap-6">
-                <button onClick={() => scrollToSection('search-section')} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
-                  <FaSearch /> DATABASE SEARCH
-                </button>
-                <button onClick={() => scrollToSection('dashboard-section')} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
-                  <FaHeart /> MY COLLECTION
-                </button>
-                <button className="flex items-center gap-4 text-xl font-bold text-gray-500 cursor-not-allowed">
-                  <FaCog /> SETTINGS (LOCKED)
-                </button>
+                {menuView === "main" ? (
+                  /* MAIN MENU */
+                  <>
+                    <button onClick={() => { setIsMenuOpen(false); scrollToSection('search-section'); }} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
+                      <FaSearch /> DATABASE SEARCH
+                    </button>
+                    <button onClick={() => { setIsMenuOpen(false); scrollToSection('dashboard-section'); }} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
+                      <FaHeart /> MY COLLECTION
+                    </button>
+                    <button onClick={() => setMenuView("settings")} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
+                      <FaCog /> SETTINGS
+                    </button>
+                  </>
+                ) : (
+                  /* SETTINGS MENU */
+                  <>
+                    <button onClick={() => setMenuView("main")} className="flex items-center gap-4 text-lg font-bold text-gray-500 hover:text-white mb-4 transition-all">
+                      <FaTimes /> BACK
+                    </button>
+                    
+                    <h3 className="text-pink-500 font-bold mb-2 uppercase tracking-widest text-sm">System Config</h3>
+                    
+                    <button onClick={requestNotificationAccess} className="flex items-center gap-4 text-xl font-bold text-white hover:text-green-400 transition-all p-3 bg-gray-700 rounded-lg border border-gray-600">
+                      <FaBell /> ENABLE NOTIFICATIONS
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2">Allows the system to alert you on waifu birthdays.</p>
+                  </>
+                )}
               </div>
 
               <div className="mt-auto pt-8 border-t border-gray-700 text-xs text-gray-500 font-mono">
