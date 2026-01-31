@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FaSearch, FaPlus, FaTrash, FaBars, FaTimes, FaHeart, FaCog , FaBell} from 'react-icons/fa'
+import toast, { Toaster } from 'react-hot-toast';
 
 // Use the cloud URL if available, otherwise use localhost
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -58,14 +59,32 @@ function App() {
 
   // --- FUNCTIONS ---
   
-  // --- NOTIFICATION SYSTEM ---
+  // --- UPDATED NOTIFICATION SYSTEM ---
   const sendNotification = (title, body) => {
+    // 1. React In App Toast will work for Mobile Devices
+    toast(t => (
+      <div className="flex flex-col">
+        <span className="font-bold text-md">{title}</span>
+        <span className="text-sm text-gray-500">{body}</span>
+      </div>
+    ), {
+      icon: '🔔',
+      style: {
+        borderRadius: '10px',
+        background: '#1f2937', // Dark gray
+        color: '#fff',
+        border: '1px solid #ec4899', // Pink border
+      },
+      duration: 4000, // Stays for 4 seconds
+    });
+
+    // 2. The System Notification too for Desktop
     if (Notification.permission === "granted") {
-      // This creates the actual phone/desktop pop-up
-      new Notification(title, {
-        body: body,
-        icon: "/logo.png" // Shows your app icon
-      });
+      try {
+        new Notification(title, { body: body, icon: "/logo.png" });
+      } catch (e) {
+        console.log("System notification failed (normal on mobile)");
+      }
     }
   }
 
@@ -168,7 +187,7 @@ function App() {
   // --- RENDER ---
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans relative overflow-x-hidden">
-      
+      <Toaster position="top-center" reverseOrder={false} />
       {/* --- 1. THE HAMBURGER BUTTON --- */}
       <button 
         onClick={() => setIsMenuOpen(true)}
