@@ -36,6 +36,15 @@ function App() {
       setUserId(newId);
     }
   }, [])
+
+  // --- SERVICE WORKER REGISTRATION (Mobile Notifications) ---
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker Registered!', reg))
+        .catch(err => console.log('Service Worker Failed', err));
+    }
+  }, []);
   
   // Menu State
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -61,7 +70,7 @@ function App() {
   
   // --- UPDATED NOTIFICATION SYSTEM ---
   const sendNotification = (title, body) => {
-    // 1. React In App Toast will work for Mobile Devices
+    // 1. In-App Toast (Keep this, it's pretty)
     toast(t => (
       <div className="flex flex-col">
         <span className="font-bold text-md">{title}</span>
@@ -69,22 +78,22 @@ function App() {
       </div>
     ), {
       icon: '🔔',
-      style: {
-        borderRadius: '10px',
-        background: '#1f2937', // Dark gray
-        color: '#fff',
-        border: '1px solid #ec4899', // Pink border
-      },
-      duration: 4000, // Stays for 4 seconds
+      style: { borderRadius: '10px', background: '#1f2937', color: '#fff', border: '1px solid #ec4899' },
+      duration: 4000,
     });
 
-    // 2. The System Notification too for Desktop
-    if (Notification.permission === "granted") {
-      try {
-        new Notification(title, { body: body, icon: "/logo.png" });
-      } catch (e) {
-        console.log("System notification failed (normal on mobile)");
-      }
+    // 2. SYSTEM STATUS BAR NOTIFICATION (The Android Fix)
+    if (Notification.permission === "granted" && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.showNotification(title, {
+          body: body,
+          icon: '/logo.png', // Ensure this image exists in public folder
+          badge: '/logo.png', // Small icon for the status bar (should be white/transparent ideally)
+          vibrate: [200, 100, 200], // Buzz-Pause-Buzz
+          tag: 'waifu-notification', // Prevents spamming multiple alerts
+          renotify: true // Buzz again even if the notification is the same
+        });
+      });
     }
   }
 
