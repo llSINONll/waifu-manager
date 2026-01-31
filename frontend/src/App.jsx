@@ -274,17 +274,44 @@ function App() {
         {showModal && selectedChar && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)} className="absolute inset-0 bg-black" />
+            
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-gray-800 border-2 border-pink-500 p-6 rounded-xl shadow-2xl z-10 max-w-sm w-full relative">
               <h2 className="text-xl font-bold text-white mb-4 text-center">Add to Collection</h2>
-              <div className="flex justify-center mb-4"><img src={selectedChar.image} alt="Preview" className="w-24 h-24 rounded-full border-2 border-pink-400 object-cover" /></div>
-              <p className="text-center text-gray-300 mb-6">{selectedChar.name}</p>
+              
+              <div className="flex justify-center mb-4">
+                <img src={selectedChar.image} alt="Preview" className="w-24 h-24 rounded-full border-2 border-pink-400 object-cover" />
+              </div>
+              
+              <p className="text-center text-gray-300 mb-6 font-bold">{selectedChar.name}</p>
+              
+              {/* --- NEW DESCRIPTIVE SECTION --- */}
               <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-6">
-                <label className="block text-xs text-pink-400 mb-2 font-mono uppercase">Set Birthday (Optional)</label>
+                <div className="flex items-center gap-2 mb-3">
+                   <span className="text-xl">🎂</span>
+                   <div>
+                     <label className="block text-sm text-pink-400 font-bold font-mono uppercase">Birthday Check</label>
+                     <p className="text-[10px] text-gray-400 leading-tight mt-0.5">
+                       "Leave blank to auto-add and confirm for the official birthdate! Use these fields only if the date is missing or unknown."
+                     </p>
+                   </div>
+                </div>
+
                 <div className="flex gap-2">
-                  <input type="number" placeholder="Month" min="1" max="12" value={manualDate.month} onChange={e => setManualDate({...manualDate, month: e.target.value})} className="w-1/2 p-2 bg-gray-800 text-white rounded border border-gray-600 focus:border-pink-500 outline-none text-center" />
-                  <input type="number" placeholder="Day" min="1" max="31" value={manualDate.day} onChange={e => setManualDate({...manualDate, day: e.target.value})} className="w-1/2 p-2 bg-gray-800 text-white rounded border border-gray-600 focus:border-pink-500 outline-none text-center" />
+                  <input 
+                    type="number" placeholder="Month (1-12)" min="1" max="12" 
+                    value={manualDate.month} 
+                    onChange={e => setManualDate({...manualDate, month: e.target.value})} 
+                    className="w-1/2 p-2 bg-gray-800 text-white rounded border border-gray-600 focus:border-pink-500 outline-none text-center placeholder-gray-500 text-sm font-mono" 
+                  />
+                  <input 
+                    type="number" placeholder="Day (1-31)" min="1" max="31" 
+                    value={manualDate.day} 
+                    onChange={e => setManualDate({...manualDate, day: e.target.value})} 
+                    className="w-1/2 p-2 bg-gray-800 text-white rounded border border-gray-600 focus:border-pink-500 outline-none text-center placeholder-gray-500 text-sm font-mono" 
+                  />
                 </div>
               </div>
+
               <div className="flex gap-3">
                 <button onClick={() => setShowModal(false)} className="flex-1 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 font-bold">Cancel</button>
                 <button onClick={confirmAdd} className="flex-1 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 font-bold shadow-lg shadow-pink-500/30">Confirm</button>
