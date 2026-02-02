@@ -337,7 +337,7 @@ function App() {
               type="text" 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="SEARCH DATABASE..."
+              placeholder="SEARCH WAIFUS..."
               className="w-full p-3 pl-12 rounded-lg bg-gray-900 text-white border border-gray-600 focus:border-pink-500 outline-none transition-all font-mono"
             />
              {loading && (
