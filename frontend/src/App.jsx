@@ -233,7 +233,7 @@ function App() {
                   /* MAIN MENU */
                   <>
                     <button onClick={() => { setIsMenuOpen(false); scrollToSection('search-section'); }} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
-                      <FaSearch /> DATABASE SEARCH
+                      <FaSearch /> SEARCH WAIFUS
                     </button>
                     <button onClick={() => { setIsMenuOpen(false); scrollToSection('dashboard-section'); }} className="flex items-center gap-4 text-xl font-bold text-gray-300 hover:text-pink-400 transition-all">
                       <FaHeart /> MY COLLECTION
@@ -391,8 +391,8 @@ function App() {
               <div className="absolute top-0 left-0 w-16 h-16 border-4 border-pink-200 border-b-transparent rounded-full animate-spin opacity-30" style={{ animationDirection: 'reverse', animationDuration: '2s' }}></div>
             </div>
             <p className="text-pink-400 font-mono animate-pulse text-lg text-center">
-              Waking up the server...<br/>
-              <span className="text-sm text-gray-500">(This may take up to 30s)</span>
+              Waking up the waifus...<br/>
+              <span className="text-sm text-gray-500">(This may take up to 30s to 60s)</span>
             </p>
           </div>
         ) : (
