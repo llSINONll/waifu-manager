@@ -1,14 +1,10 @@
 import os
-import asyncio
-import urllib.parse
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import httpx
 from datetime import datetime, date
 import pytz
 import re
-from rapidfuzz import fuzz, process
 
 # --- DATABASE IMPORTS ---
 from sqlalchemy import create_engine, Column, Integer, String
@@ -110,113 +106,7 @@ def get_days_until_birthday(month, day):
     
     return delta
 
-# --- 1. THE NICKNAME DICTIONARY ---
-SEARCH_ALIASES = {
-    "sinon": "Asada Shino", 
-    "kirito": "Kazuto Kirigaya",
-    "llenn": "Karen Kohiruimaki",
-    "pito": "Elza Kanzaki",
-    "rei saiga": "Psyger-0",  
-    "saiga rei": "Psyger-0",
-    "Amane Towa": "arthur pencilgon",
-    "Kei Uomi": "katzo",
-    "Rakurou Hizutome": "sunraku"
-}
-
 # --- ROUTES ---
-
-@app.get("/search/{name}")
-async def search_waifu(name: str):
-    print(f"\n--- Smart Search for: '{name}' ---") 
-    
-    # 1. PREPARE QUERIES
-    queries_to_try = []
-    clean_name = name.strip().lower()
-    
-    if clean_name in SEARCH_ALIASES:
-        queries_to_try.append(SEARCH_ALIASES[clean_name])
-    
-    queries_to_try.append(name)
-    
-    parts = name.strip().split()
-    if len(parts) >= 2:
-        queries_to_try.append(f"{parts[-1]}, {' '.join(parts[:-1])}")
-        queries_to_try.append(f"{parts[-1]} {' '.join(parts[:-1])}")  
-    
-    final_queries = list(dict.fromkeys(queries_to_try))
-    print(f"-> Queries: {final_queries}")
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-
-    async with httpx.AsyncClient(headers=headers) as client:
-        all_candidates = {} 
-        
-        # 2. FETCH FROM API
-        for query in final_queries:
-            for page in [1]: 
-                try:
-                    jikan_url = f"https://api.jikan.moe/v4/characters?q={query}&limit=25&page={page}"
-                    safe_url = urllib.parse.quote(jikan_url, safe="")
-                    url = f"https://api.allorigins.win/raw?url={safe_url}"
-                    
-                    # We add a 10-second timeout because proxies take a second longer
-                    response = await client.get(url, timeout=10.0)
-                    
-                    if response.status_code == 429: 
-                        print("Hit Rate Limit! Waiting 1 second...")
-                        await asyncio.sleep(1) # <-- 2. WAIT IF BLOCKED
-                        break
-                        
-                    data = response.json()
-                    items = data.get('data', [])
-                    if not items: break 
-                        
-                    for item in items:
-                        all_candidates[item['mal_id']] = item
-                    
-                    await asyncio.sleep(0.5) 
-                        
-                except Exception as e:
-                    print(f"API Error: {e}")
-        
-        raw_results = list(all_candidates.values())
-        processed_results = []
-        
-        # 3. SCORING
-        for item in raw_results:
-            char_name = item['name']
-            nicknames = item.get('nicknames', []) or []
-            about = item.get('about', '') or ''
-            
-            query_lower = clean_name
-            name_lower = char_name.lower()
-            
-            name_score = fuzz.token_sort_ratio(query_lower, name_lower)
-            
-            nick_score = 0
-            if nicknames:
-                best_nick = process.extractOne(query_lower, nicknames, scorer=fuzz.token_sort_ratio)
-                if best_nick: nick_score = best_nick[1]
-            
-            bio_score = fuzz.partial_ratio(query_lower, about.lower())
-            
-            processed_results.append({
-                "mal_id": item['mal_id'],
-                "name": char_name,
-                "nicknames": ", ".join(nicknames[:3]),
-                "image": item['images']['jpg']['image_url'],
-                "about": about,
-                "score": max(name_score, nick_score, bio_score)
-            })
-
-        sorted_results = sorted(processed_results, key=lambda x: x['score'], reverse=True)
-        
-        if sorted_results:
-             print(f"-> Top: {sorted_results[0]['name']} ({sorted_results[0]['score']})")
-
-        return sorted_results[:10]
 
 @app.post("/add")
 def add_waifu(waifu: WaifuRequest, db: Session = Depends(get_db), x_user_id: str = Header(...)):
@@ -264,8 +154,6 @@ def get_dashboard(db: Session = Depends(get_db), x_user_id: str = Header(...)):
             "image": w.image_url,
             "days_until": days,
             "status": status,
-            
-            # <-- 4. DASHBOARD FIX RESTORED! (Fixes the "N/A" error)
             "birth_month": w.birthday_month, 
             "birth_day": w.birthday_day,
             "manual_month": w.birthday_month,

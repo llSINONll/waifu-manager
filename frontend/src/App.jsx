@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaSearch, FaPlus, FaTrash, FaBars, FaTimes, FaHeart, FaCog , FaBell} from 'react-icons/fa'
+import { FaSearch, FaPlus, FaTrash, FaBars, FaTimes, FaHeart, FaCog, FaBell } from 'react-icons/fa'
 import toast, { Toaster } from 'react-hot-toast';
 
-// Use the cloud URL if available, otherwise use localhost
+// Use the cloud URL if available, otherwise use localhost for your Python backend
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+// --- 1. THE NICKNAME DICTIONARY ---
+const SEARCH_ALIASES = {
+  "sinon": "asada shino", 
+  "kirito": "kazuto kirigaya",
+  "llenn": "karen kohiruimaki",
+  "pito": "elza kanzaki",
+  "rei saiga": "psyger-0",  
+  "saiga rei": "psyger-0",
+  "amane towa": "arthur pencilgon",
+  "kei uomi": "katzo",
+  "rakurou hizutome": "sunraku"
+};
 
 function App() {
   // --- STATE VARIABLES ---
@@ -22,14 +35,9 @@ function App() {
   useEffect(() => {
     if (!userId) {
       // ANIME STYLE ID GENERATOR
-      // 1. Random Prefix (GGO, SAO, ALO, SLF)
       const prefixes = ["GGO", "SAO", "ALO", "SLF", "UNIT"];
       const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-      
-      // 2. Random Tactical Number (e.g., 0492)
       const randomNumber = Math.floor(1000 + Math.random() * 9000);
-      
-      // 3. Combine: "GGO-4821"
       const newId = `${randomPrefix}-${randomNumber}`;
       
       localStorage.setItem("waifu_user_id", newId);
@@ -70,7 +78,6 @@ function App() {
   
   // --- UPDATED NOTIFICATION SYSTEM ---
   const sendNotification = (title, body) => {
-    // 1. In-App Toast (Keep this, it's pretty)
     toast(t => (
       <div className="flex flex-col">
         <span className="font-bold text-md">{title}</span>
@@ -82,28 +89,25 @@ function App() {
       duration: 4000,
     });
 
-    // 2. SYSTEM STATUS BAR NOTIFICATION (The Android Fix)
     if (Notification.permission === "granted" && 'serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
         registration.showNotification(title, {
           body: body,
-          icon: '/logo.png', // Ensure this image exists in public folder
-          badge: '/logo.png', // Small icon for the status bar (should be white/transparent ideally)
-          vibrate: [200, 100, 200], // Buzz-Pause-Buzz
-          tag: 'waifu-notification', // Prevents spamming multiple alerts
-          renotify: true // Buzz again even if the notification is the same
+          icon: '/logo.png',
+          badge: '/logo.png',
+          vibrate: [200, 100, 200],
+          tag: 'waifu-notification',
+          renotify: true
         });
       });
     }
   }
 
   const checkBirthdaysAndNotify = (waifuList) => {
-    // 1. Ask for permission if not granted
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
-    // 2. Look for birthdays TODAY or TOMORROW
     waifuList.forEach(waifu => {
       if (waifu.days_until === 0) {
         sendNotification(`🎉 It's ${waifu.name}'s Birthday!`, `Don't forget to celebrate today!`);
@@ -113,7 +117,6 @@ function App() {
     });
   }
 
-    // --- NEW FUNCTION ---
   const requestNotificationAccess = () => {
     if (!("Notification" in window)) {
       alert("This browser does not support desktop notifications");
@@ -122,7 +125,7 @@ function App() {
     Notification.requestPermission().then((permission) => {
       if (permission === "granted") {
         sendNotification("System Online", "Notifications are now active!");
-        setIsMenuOpen(false); // Close menu on success
+        setIsMenuOpen(false); 
       } else {
         alert("Permission denied. Check phone settings.");
       }
@@ -130,27 +133,73 @@ function App() {
   }
 
   const fetchDashboard = () => {
-    if (!userId) return; // Wait until we have an ID
+    if (!userId) return; 
     axios.get('/dashboard', {
         headers: { 'x-user-id': userId }
       })
       .then(res => {
         setMyWaifus(res.data);
         checkBirthdaysAndNotify(res.data);
-        setIsWakingUp(false); // STOP LOADING
+        setIsWakingUp(false); 
       })
       .catch(err => {
         console.error(err);
-        setIsWakingUp(false); // STOP LOADING EVEN IF ERROR
+        setIsWakingUp(false); 
       })
   }
 
-  const handleSearch = (searchTerm) => {
+  // --- 🚀 NEW FRONTEND SEARCH ENGINE (Bypasses Cloudflare) ---
+  const handleSearch = async (searchTerm) => {
     setLoading(true);
-    axios.get(`/search/${searchTerm}`)
-      .then(res => { setSearchResults(res.data); setLoading(false); })
-      .catch(err => { console.log("No results"); setLoading(false); })
-  }
+    setSearchResults([]);
+
+    try {
+      let queryStr = searchTerm.trim().toLowerCase();
+      
+      // Alias Swap
+      if (SEARCH_ALIASES[queryStr]) {
+        queryStr = SEARCH_ALIASES[queryStr];
+      }
+
+      // Direct call to Anime Database
+      const response = await axios.get(`https://api.jikan.moe/v4/characters?q=${queryStr}&limit=25`);
+      const rawData = response.data.data || [];
+
+      // Scoring System
+      const processedData = rawData.map(char => {
+        const charName = char.name.toLowerCase();
+        const nicknames = char.nicknames ? char.nicknames.map(n => n.toLowerCase()) : [];
+        
+        let score = 0;
+        
+        if (charName === queryStr) score += 100;
+        else if (charName.includes(queryStr)) score += 50;
+        
+        if (nicknames.includes(queryStr)) score += 80;
+        else if (nicknames.some(n => n.includes(queryStr))) score += 40;
+
+        return {
+          mal_id: char.mal_id,
+          name: char.name,
+          image: char.images?.jpg?.image_url || "",
+          about: char.about || "",
+          score: score
+        };
+      });
+
+      // Sort & Slice
+      const sortedData = processedData
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+
+      setSearchResults(sortedData);
+    } catch (error) {
+      console.error("Search Error:", error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openAddModal = (character) => {
     setSelectedChar(character);
@@ -167,7 +216,7 @@ function App() {
       manual_month: manualDate.month ? parseInt(manualDate.month) : null,
       manual_day: manualDate.day ? parseInt(manualDate.day) : null
     }, {
-      headers: { 'x-user-id': userId } // THE KEY CARD (Passed as 3rd argument)
+      headers: { 'x-user-id': userId } 
     })
     .then(res => {
       alert(res.data.message);
@@ -181,7 +230,7 @@ function App() {
 
   const deleteWaifu = (id) => {
     axios.delete(`/delete/${id}`, {
-        headers: { 'x-user-id': userId } // THE KEY CARD
+        headers: { 'x-user-id': userId } 
       })
       .then(res => { fetchDashboard(); })
       .catch(err => alert("Error deleting"))
