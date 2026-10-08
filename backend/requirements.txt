@@ -6,3 +6,4 @@ httpx
 rapidfuzz
 pydantic
 pytz
+psycopg[binary]
