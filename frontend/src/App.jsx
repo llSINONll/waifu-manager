@@ -148,7 +148,6 @@ function App() {
       })
   }
 
-  // --- 🚀 FRONTEND SEARCH ENGINE (With CORS Proxy Bypass) ---
   const handleSearch = async (searchTerm) => {
     setLoading(true);
     setSearchResults([]);
@@ -161,6 +160,7 @@ function App() {
         queryStr = SEARCH_ALIASES[queryStr];
       }
 
+      // 👇 USING THE RAW ALLORIGINS PROXY (Bypasses Cloudflare IP ban AND fixes CORS for the browser)
       const targetUrl = `https://api.jikan.moe/v4/characters?q=${queryStr}&limit=25`;
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 
