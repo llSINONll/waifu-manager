@@ -27,7 +27,11 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # --- DATABASE SETUP ---
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL, 
+    pool_pre_ping=True,      # Tests connection health before using it
+    pool_recycle=300         # Recycles connections every 5 minutes to prevent SSL drops
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
