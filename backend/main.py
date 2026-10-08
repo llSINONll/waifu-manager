@@ -145,12 +145,16 @@ async def search_waifu(name: str):
     final_queries = list(dict.fromkeys(queries_to_try))
     print(f"-> Queries: {final_queries}")
 
-    async with httpx.AsyncClient() as client:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
+    async with httpx.AsyncClient(headers=headers) as client:
         all_candidates = {} 
         
         # 2. FETCH FROM API
         for query in final_queries:
-            for page in [1, 2]: 
+            for page in [1]: 
                 try:
                     url = f"https://api.jikan.moe/v4/characters?q={query}&limit=25&page={page}"
                     response = await client.get(url)
