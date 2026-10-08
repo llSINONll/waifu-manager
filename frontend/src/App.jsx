@@ -160,15 +160,14 @@ function App() {
         queryStr = SEARCH_ALIASES[queryStr];
       }
 
-      const response = await axios.get(
-        `https://api.jikan.moe/v4/characters`,
-        {
-          params: {
-            q: queryStr,
-            limit: 25
-          }
+    const response = await axios.get(
+      `${window.location.origin}/api/characters`,
+      {
+        params: {
+          q: queryStr
         }
-      );
+      }
+    );
 
       const rawData = response.data.data || [];
 
