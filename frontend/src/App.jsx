@@ -160,11 +160,16 @@ function App() {
         queryStr = SEARCH_ALIASES[queryStr];
       }
 
-      // 👇 USING THE RAW ALLORIGINS PROXY (Bypasses Cloudflare IP ban AND fixes CORS for the browser)
-      const targetUrl = `https://api.jikan.moe/v4/characters?q=${queryStr}&limit=25`;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      const response = await axios.get(
+        `https://api.jikan.moe/v4/characters`,
+        {
+          params: {
+            q: queryStr,
+            limit: 25
+          }
+        }
+      );
 
-      const response = await axios.get(proxyUrl);
       const rawData = response.data.data || [];
 
       // Scoring System
