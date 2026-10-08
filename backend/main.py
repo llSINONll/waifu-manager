@@ -1,4 +1,5 @@
 import os
+import asyncio
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -88,7 +89,6 @@ def extract_birthday(bio_text: str):
     return None, None
 
 def get_days_until_birthday(month, day):
-    # .date() removes the time (2:00 AM) so it matches Midnight perfectly
     if not month or not day:
         return 999 
     today = datetime.now().date() 
@@ -100,7 +100,6 @@ def get_days_until_birthday(month, day):
 
     delta = (birthday - today).days
 
-    # If the birthday has passed (negative), look at next year
     if delta < 0:
         try:
             next_birthday = date(today.year + 1, month, day)
@@ -112,13 +111,10 @@ def get_days_until_birthday(month, day):
 
 # --- 1. THE NICKNAME DICTIONARY ---
 SEARCH_ALIASES = {
-    # --- Sword Art Online ---
     "sinon": "Asada Shino", 
     "kirito": "Kazuto Kirigaya",
     "llenn": "Karen Kohiruimaki",
     "pito": "Elza Kanzaki",
-    
-    # --- Shangri-La Frontier ---
     "rei saiga": "Psyger-0",  
     "saiga rei": "Psyger-0",
     "Amane Towa": "arthur pencilgon",
@@ -136,20 +132,16 @@ async def search_waifu(name: str):
     queries_to_try = []
     clean_name = name.strip().lower()
     
-    # A. Alias
     if clean_name in SEARCH_ALIASES:
         queries_to_try.append(SEARCH_ALIASES[clean_name])
     
-    # B. Original
     queries_to_try.append(name)
     
-    # C. Permutations
     parts = name.strip().split()
     if len(parts) >= 2:
-        queries_to_try.append(f"{parts[-1]}, {' '.join(parts[:-1])}") # "Saiga, Rei"
-        queries_to_try.append(f"{parts[-1]} {' '.join(parts[:-1])}")   # "Saiga Rei"
+        queries_to_try.append(f"{parts[-1]}, {' '.join(parts[:-1])}")
+        queries_to_try.append(f"{parts[-1]} {' '.join(parts[:-1])}")  
     
-    # Remove duplicates
     final_queries = list(dict.fromkeys(queries_to_try))
     print(f"-> Queries: {final_queries}")
 
@@ -163,7 +155,10 @@ async def search_waifu(name: str):
                     url = f"https://api.jikan.moe/v4/characters?q={query}&limit=25&page={page}"
                     response = await client.get(url)
                     
-                    if response.status_code == 429: break
+                    if response.status_code == 429: 
+                        print("Hit Rate Limit! Waiting 1 second...")
+                        await asyncio.sleep(1) # <-- 2. WAIT IF BLOCKED
+                        break
                         
                     data = response.json()
                     items = data.get('data', [])
@@ -171,6 +166,8 @@ async def search_waifu(name: str):
                         
                     for item in items:
                         all_candidates[item['mal_id']] = item
+                    
+                    await asyncio.sleep(0.5) 
                         
                 except Exception as e:
                     print(f"API Error: {e}")
@@ -184,20 +181,16 @@ async def search_waifu(name: str):
             nicknames = item.get('nicknames', []) or []
             about = item.get('about', '') or ''
             
-            # comparisons
             query_lower = clean_name
             name_lower = char_name.lower()
             
-            # A. Name Match
             name_score = fuzz.token_sort_ratio(query_lower, name_lower)
             
-            # B. Nickname Match
             nick_score = 0
             if nicknames:
                 best_nick = process.extractOne(query_lower, nicknames, scorer=fuzz.token_sort_ratio)
                 if best_nick: nick_score = best_nick[1]
             
-            # C. Bio Match
             bio_score = fuzz.partial_ratio(query_lower, about.lower())
             
             processed_results.append({
@@ -209,7 +202,6 @@ async def search_waifu(name: str):
                 "score": max(name_score, nick_score, bio_score)
             })
 
-        # Sort by Score
         sorted_results = sorted(processed_results, key=lambda x: x['score'], reverse=True)
         
         if sorted_results:
@@ -219,20 +211,15 @@ async def search_waifu(name: str):
 
 @app.post("/add")
 def add_waifu(waifu: WaifuRequest, db: Session = Depends(get_db), x_user_id: str = Header(...)):
-    # 1. Check for duplicate
     exists = db.query(WaifuDB).filter(WaifuDB.name == waifu.name, WaifuDB.owner_id == x_user_id).first()
     if exists:
         return {"message": f"{waifu.name} is already in your list!"}
 
-    # 2. DETERMINE BIRTHDAY
-    # Priority A: Did the user type it manually?
     if waifu.manual_month and waifu.manual_day:
         month, day = waifu.manual_month, waifu.manual_day
     else:
-        # Priority B: Try to extract it from the Bio
         month, day = extract_birthday(waifu.about)
 
-    # 3. Save to DB
     new_waifu = WaifuDB(
         name=waifu.name,
         image_url=waifu.image,
@@ -252,7 +239,6 @@ def add_waifu(waifu: WaifuRequest, db: Session = Depends(get_db), x_user_id: str
 
 @app.get("/dashboard")
 def get_dashboard(db: Session = Depends(get_db), x_user_id: str = Header(...)):
-    # 1. Get all waifus from REAL Database
     waifus = db.query(WaifuDB).filter(WaifuDB.owner_id == x_user_id).all()
     
     dashboard_data = []
@@ -268,19 +254,23 @@ def get_dashboard(db: Session = Depends(get_db), x_user_id: str = Header(...)):
             "name": w.name,
             "image": w.image_url,
             "days_until": days,
-            "status": status
+            "status": status,
+            
+            # <-- 4. DASHBOARD FIX RESTORED! (Fixes the "N/A" error)
+            "birth_month": w.birthday_month, 
+            "birth_day": w.birthday_day,
+            "manual_month": w.birthday_month,
+            "manual_day": w.birthday_day
         })
     return sorted(dashboard_data, key=lambda x: x['days_until'])
 
 @app.delete("/delete/{waifu_id}")
 def delete_waifu(waifu_id: int, db: Session = Depends(get_db), x_user_id: str = Header(...)):
-    # Find the waifu by ID
     waifu = db.query(WaifuDB).filter(WaifuDB.id == waifu_id, WaifuDB.owner_id == x_user_id).first()
     
     if not waifu:
         raise HTTPException(status_code=404, detail="Waifu not found (or you don't own it)")
     
-    # Delete from DB
     db.delete(waifu)
     db.commit()
     return {"message": "Deleted successfully"}
