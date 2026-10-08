@@ -149,17 +149,19 @@ function App() {
   }
 
   const handleSearch = async (searchTerm) => {
-    setLoading(true);
-    setSearchResults([]);
+  setLoading(true);
+  setSearchResults([]);
 
-    try {
-      let queryStr = searchTerm.trim().toLowerCase();
-      
-      // Alias Swap
-      if (SEARCH_ALIASES[queryStr]) {
-        queryStr = SEARCH_ALIASES[queryStr];
-      }
+  try {
+    let queryStr = searchTerm.trim().toLowerCase();
 
+    // Alias Swap
+    if (SEARCH_ALIASES[queryStr]) {
+      queryStr = SEARCH_ALIASES[queryStr];
+    }
+
+    // Ask our Vercel serverless function
+    // The serverless function talks to the MAL API securely.
     const response = await axios.get(
       `${window.location.origin}/api/characters`,
       {
@@ -169,39 +171,80 @@ function App() {
       }
     );
 
-      const rawData = response.data.data || [];
+    const rawData = response.data.data || [];
 
-      // Scoring System
-      const processedData = rawData.map(char => {
-        const charName = char.name.toLowerCase();
-        const nicknames = char.nicknames ? char.nicknames.map(n => n.toLowerCase()) : [];
-        
-        let score = 0;
-        
-        if (charName === queryStr) score += 100;
-        else if (charName.includes(queryStr)) score += 50;
-        
-        if (nicknames.includes(queryStr)) score += 80;
-        else if (nicknames.some(n => n.includes(queryStr))) score += 40;
+    // Convert MAL response format into the format
+    // that the rest of this React app already uses.
+    const processedData = rawData.map(item => {
+      const person = item.node;
 
-        return {
-          mal_id: char.mal_id,
-          name: char.name,
-          image: char.images?.jpg?.image_url || "",
-          about: char.about || "",
-          score: score
-        };
-      });
+      const firstName = person.first_name || "";
+      const lastName = person.last_name || "";
 
-      // Sort & Slice
-      const sortedData = processedData
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+      const charName = `${firstName} ${lastName}`.trim();
 
-      setSearchResults(sortedData);
-    } catch (error) {
-      console.error("Search Error:", error);
-      setSearchResults([]);
+      const nicknames = person.nicknames || [];
+
+      let score = 0;
+
+      const lowerName = charName.toLowerCase();
+
+      // Name matching
+      if (lowerName === queryStr) {
+        score += 100;
+      } else if (lowerName.includes(queryStr)) {
+        score += 50;
+      }
+
+      // Nickname matching
+      if (
+        nicknames.some(
+          nickname => nickname.toLowerCase() === queryStr
+        )
+      ) {
+        score += 80;
+      } else if (
+        nicknames.some(
+          nickname => nickname.toLowerCase().includes(queryStr)
+        )
+      ) {
+        score += 40;
+      }
+
+      return {
+        mal_id: person.id,
+
+        name: charName,
+
+        nicknames: nicknames,
+
+        image:
+          person.main_picture?.large ||
+          person.main_picture?.medium ||
+          "",
+
+        about: person.about || "",
+
+        score: score
+      };
+    });
+
+    // Sort best matches first
+    const sortedData = processedData
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    setSearchResults(sortedData);
+
+  } catch (error) {
+    console.error("Search Error:", error);
+
+    if (error.response) {
+      console.error("Server Response:", error.response.data);
+    }
+
+    setSearchResults([]);
+
     } finally {
       setLoading(false);
     }
