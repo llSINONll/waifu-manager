@@ -148,7 +148,7 @@ function App() {
       })
   }
 
-  // --- 🚀 NEW FRONTEND SEARCH ENGINE (Bypasses Cloudflare) ---
+  // --- 🚀 FRONTEND SEARCH ENGINE (With CORS Proxy Bypass) ---
   const handleSearch = async (searchTerm) => {
     setLoading(true);
     setSearchResults([]);
@@ -161,8 +161,11 @@ function App() {
         queryStr = SEARCH_ALIASES[queryStr];
       }
 
-      // Direct call to Anime Database
-      const response = await axios.get(`https://api.jikan.moe/v4/characters?q=${queryStr}&limit=25`);
+      // 👇 ROUTED THROUGH PROXY TO PREVENT TIMEOUTS
+      const targetUrl = `https://api.jikan.moe/v4/characters?q=${queryStr}&limit=25`;
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+      const response = await axios.get(proxyUrl);
       const rawData = response.data.data || [];
 
       // Scoring System
