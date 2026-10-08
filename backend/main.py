@@ -1,5 +1,6 @@
 import os
 import asyncio
+import urllib.parse
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -156,8 +157,12 @@ async def search_waifu(name: str):
         for query in final_queries:
             for page in [1]: 
                 try:
-                    url = f"https://api.jikan.moe/v4/characters?q={query}&limit=25&page={page}"
-                    response = await client.get(url)
+                    jikan_url = f"https://api.jikan.moe/v4/characters?q={query}&limit=25&page={page}"
+                    safe_url = urllib.parse.quote(jikan_url, safe="")
+                    url = f"https://api.allorigins.win/raw?url={safe_url}"
+                    
+                    # We add a 10-second timeout because proxies take a second longer
+                    response = await client.get(url, timeout=10.0)
                     
                     if response.status_code == 429: 
                         print("Hit Rate Limit! Waiting 1 second...")
