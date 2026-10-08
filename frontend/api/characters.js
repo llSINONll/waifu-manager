@@ -11,27 +11,48 @@ export default async function handler(req, res) {
         const jikanUrl =
             `https://api.jikan.moe/v4/characters?q=${encodeURIComponent(q)}&limit=25`;
 
-        const response = await fetch(jikanUrl);
+        console.log("Requesting Jikan:", jikanUrl);
+
+        const response = await fetch(jikanUrl, {
+            headers: {
+                "User-Agent": "WaifuManager/1.0"
+            }
+        });
+
+        console.log("Jikan status:", response.status);
+
+        const text = await response.text();
+
+        console.log("Jikan response:", text);
 
         if (!response.ok) {
-            const errorText = await response.text();
-
-            return res.status(response.status).json({
-                error: "Jikan API error",
-                details: errorText
+            return res.status(502).json({
+                error: "Jikan API returned an error",
+                jikanStatus: response.status,
+                details: text
             });
         }
 
-        const data = await response.json();
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch (parseError) {
+            return res.status(502).json({
+                error: "Jikan returned invalid JSON",
+                details: text
+            });
+        }
 
         return res.status(200).json(data);
 
     } catch (error) {
         console.error("Jikan proxy error:", error);
 
-        return res.status(500).json({
+        return res.status(502).json({
             error: "Failed to contact Jikan API",
-            details: error.message
+            details: error.message,
+            name: error.name
         });
     }
 }
