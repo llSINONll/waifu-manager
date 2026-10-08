@@ -2,28 +2,57 @@ export default async function handler(req, res) {
     try {
         const { q } = req.query;
 
-        if (!q) {
+        if (!q || !q.trim()) {
             return res.status(400).json({
                 error: "Missing search query"
             });
         }
 
-        const malUrl =
-            `https://api.myanimelist.net/v2/people?q=${encodeURIComponent(q)}&limit=25&fields=first_name,last_name,nicknames,about,main_picture`;
-
-        const response = await fetch(malUrl, {
-            headers: {
-                "X-MAL-CLIENT-ID": process.env.MAL_CLIENT_ID
+        const query = `
+            query ($search: String!) {
+                Page(page: 1, perPage: 5) {
+                    characters(search: $search) {
+                        id
+                        name {
+                            full
+                        }
+                        image {
+                            large
+                            medium
+                        }
+                        description
+                        dateOfBirth {
+                            year
+                            month
+                            day
+                        }
+                    }
+                }
             }
+        `;
+
+        const response = await fetch("https://graphql.anilist.co", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                query,
+                variables: {
+                    search: q.trim()
+                }
+            })
         });
 
         const text = await response.text();
 
-        if (!response.ok) {
-            console.error("MAL API Error:", response.status, text);
+        console.log("AniList status:", response.status);
+        console.log("AniList response:", text);
 
+        if (!response.ok) {
             return res.status(502).json({
-                error: "MAL API error",
+                error: "AniList API error",
                 status: response.status,
                 details: text
             });
@@ -31,13 +60,20 @@ export default async function handler(req, res) {
 
         const data = JSON.parse(text);
 
+        if (data.errors) {
+            return res.status(502).json({
+                error: "AniList GraphQL error",
+                details: data.errors
+            });
+        }
+
         return res.status(200).json(data);
 
     } catch (error) {
-        console.error("MAL proxy error:", error);
+        console.error("AniList proxy error:", error);
 
         return res.status(500).json({
-            error: "Failed to contact MAL API",
+            error: "Failed to contact AniList API",
             details: error.message
         });
     }
