@@ -221,6 +221,9 @@ function App() {
 
         about: char.description || "",
 
+        birthday_month: char.dateOfBirth?.month || null,
+        birthday_day: char.dateOfBirth?.day || null,
+
         score: score
       };
     });
@@ -256,25 +259,48 @@ function App() {
   }
 
   const confirmAdd = () => {
-    if (!selectedChar) return;
-    axios.post('/add', {
-      name: selectedChar.name,
-      image: selectedChar.image,
-      about: selectedChar.about,
-      manual_month: manualDate.month ? parseInt(manualDate.month) : null,
-      manual_day: manualDate.day ? parseInt(manualDate.day) : null
-    }, {
-      headers: { 'x-user-id': userId } 
-    })
-    .then(res => {
-      alert(res.data.message);
-      setShowModal(false);
-      setQuery("");
-      setSearchResults([]);
-      fetchDashboard(); 
-    })
-    .catch(err => alert("Error adding waifu"))
-  }
+  if (!selectedChar) return;
+
+  // Birthday priority:
+  // 1. User manually entered a date
+  // 2. Otherwise use AniList's official birthday
+  // 3. Otherwise send null
+
+  const birthdayMonth = manualDate.month
+    ? parseInt(manualDate.month)
+    : selectedChar.birthday_month || null;
+
+  const birthdayDay = manualDate.day
+    ? parseInt(manualDate.day)
+    : selectedChar.birthday_day || null;
+
+  axios.post('/add', {
+    name: selectedChar.name,
+    image: selectedChar.image,
+    about: selectedChar.about,
+
+    manual_month: birthdayMonth,
+    manual_day: birthdayDay
+
+  }, {
+    headers: { 'x-user-id': userId }
+  })
+
+  .then(res => {
+    alert(res.data.message);
+
+    setShowModal(false);
+    setQuery("");
+    setSearchResults([]);
+
+    fetchDashboard();
+  })
+
+  .catch(err => {
+    console.error("Add Waifu Error:", err);
+    alert("Error adding waifu");
+  });
+  };
 
   const deleteWaifu = (id) => {
     axios.delete(`/delete/${id}`, {

@@ -10,18 +10,22 @@ export default async function handler(req, res) {
 
         const query = `
             query ($search: String!) {
-                Page(page: 1, perPage: 5) {
+                Page(page: 1, perPage: 10) {
                     characters(search: $search) {
                         id
+
                         name {
                             full
                             alternative
                         }
+
                         image {
                             large
                             medium
                         }
+
                         description
+
                         dateOfBirth {
                             year
                             month
@@ -34,10 +38,12 @@ export default async function handler(req, res) {
 
         const response = await fetch("https://graphql.anilist.co", {
             method: "POST",
+
             headers: {
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
+
             body: JSON.stringify({
                 query,
                 variables: {
@@ -48,10 +54,9 @@ export default async function handler(req, res) {
 
         const text = await response.text();
 
-        console.log("AniList status:", response.status);
-        console.log("AniList response:", text);
-
         if (!response.ok) {
+            console.error("AniList API Error:", response.status, text);
+
             return res.status(502).json({
                 error: "AniList API error",
                 status: response.status,
@@ -62,6 +67,8 @@ export default async function handler(req, res) {
         const data = JSON.parse(text);
 
         if (data.errors) {
+            console.error("AniList GraphQL Error:", data.errors);
+
             return res.status(502).json({
                 error: "AniList GraphQL error",
                 details: data.errors
