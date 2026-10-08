@@ -15,6 +15,7 @@ export default async function handler(req, res) {
                         id
                         name {
                             full
+                            alternative
                         }
                         image {
                             large
