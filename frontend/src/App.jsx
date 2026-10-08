@@ -161,7 +161,7 @@ function App() {
     }
 
     // Ask our Vercel serverless function
-    // The serverless function talks to the MAL API securely.
+    // Vercel talks to AniList securely.
     const response = await axios.get(
       `${window.location.origin}/api/characters`,
       {
@@ -171,59 +171,55 @@ function App() {
       }
     );
 
-    const rawData = response.data.data || [];
+    const rawData = response.data?.data?.Page?.characters || [];
 
-    // Convert MAL response format into the format
-    // that the rest of this React app already uses.
-    const processedData = rawData.map(item => {
-      const person = item.node;
-
-      const firstName = person.first_name || "";
-      const lastName = person.last_name || "";
-
-      const charName = `${firstName} ${lastName}`.trim();
-
-      const nicknames = person.nicknames || [];
+    const processedData = rawData.map(char => {
+      const charName = char.name?.full || "Unknown";
+      const lowerName = charName.toLowerCase();
 
       let score = 0;
 
-      const lowerName = charName.toLowerCase();
+      // AniList alternative names
+      const alternatives = char.name?.alternative || [];
 
-      // Name matching
+      // Exact / partial name matching
       if (lowerName === queryStr) {
         score += 100;
       } else if (lowerName.includes(queryStr)) {
         score += 50;
       }
 
-      // Nickname matching
+      // Alternative name matching
       if (
-        nicknames.some(
-          nickname => nickname.toLowerCase() === queryStr
+        alternatives.some(
+          name => name.toLowerCase() === queryStr
         )
       ) {
         score += 80;
       } else if (
-        nicknames.some(
-          nickname => nickname.toLowerCase().includes(queryStr)
+        alternatives.some(
+          name => name.toLowerCase().includes(queryStr)
         )
       ) {
         score += 40;
       }
 
       return {
-        mal_id: person.id,
+        // This is actually AniList's character ID.
+        // We keep the old field name so the rest of the app
+        // doesn't need unnecessary changes.
+        mal_id: char.id,
 
         name: charName,
 
-        nicknames: nicknames,
+        nicknames: alternatives,
 
         image:
-          person.main_picture?.large ||
-          person.main_picture?.medium ||
+          char.image?.large ||
+          char.image?.medium ||
           "",
 
-        about: person.about || "",
+        about: char.description || "",
 
         score: score
       };
@@ -240,15 +236,18 @@ function App() {
     console.error("Search Error:", error);
 
     if (error.response) {
-      console.error("Server Response:", error.response.data);
+      console.error(
+        "Server Response:",
+        error.response.data
+      );
     }
 
     setSearchResults([]);
 
-    } finally {
-      setLoading(false);
-    }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const openAddModal = (character) => {
     setSelectedChar(character);
