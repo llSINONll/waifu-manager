@@ -55,11 +55,16 @@ export default async function handler(req, res) {
 
             const birthday = extractBirthday(about);
 
+            const cleanName = (profile.name || "")
+                .replace(/"[^"]*"/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
             return res.status(200).json({
                 character: {
                     id: String(profile.malId),
                     mal_id: profile.malId,
-                    name: profile.name || "",
+                    name: cleanName,
                     image:
                         profile.images?.medium ||
                         profile.imageUrl ||
