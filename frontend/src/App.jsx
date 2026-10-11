@@ -204,27 +204,21 @@ function App() {
         score += 40;
       }
 
+      
       return {
-        // This is actually AniList's character ID.
-        // We keep the old field name so the rest of the app
-        // doesn't need unnecessary changes.
+        id: String(char.id),
         mal_id: char.id,
-
+        source: char.source || "anilist",
         name: charName,
-
         nicknames: alternatives,
-
         image:
           char.image?.large ||
           char.image?.medium ||
           "",
-
         about: char.description || "",
-
         birthday_month: char.dateOfBirth?.month || null,
         birthday_day: char.dateOfBirth?.day || null,
-
-        score: score
+        score
       };
     });
 
@@ -252,11 +246,39 @@ function App() {
   }
 };
 
-  const openAddModal = (character) => {
-    setSelectedChar(character);
-    setManualDate({ month: "", day: "" }); 
-    setShowModal(true);
-  }
+  
+  const openAddModal = async (character) => {
+    setManualDate({ month: "", day: "" });
+
+    try {
+      let enrichedCharacter = { ...character };
+
+      if (character.source === "jikan-edge") {
+        const response = await axios.get(
+          `${window.location.origin}/api/characters`,
+          {
+            params: {
+              id: character.id,
+              source: "jikan-edge"
+            }
+          }
+        );
+
+        enrichedCharacter = {
+          ...enrichedCharacter,
+          ...response.data.character
+        };
+      }
+
+      setSelectedChar(enrichedCharacter);
+      setShowModal(true);
+    } catch (error) {
+      console.error("Full profile lookup failed:", error);
+      setSelectedChar(character);
+      setShowModal(true);
+    }
+  };
+
 
   const confirmAdd = () => {
   if (!selectedChar) return;
